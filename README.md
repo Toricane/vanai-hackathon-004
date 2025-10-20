@@ -1,5 +1,15 @@
 # PlatoAI: The Soundtrack of Us
 
+This project was built by Prajwal Prashanth in 3.5 hours + a shower thought in the morning.
+
+## Demo Video
+
+Watch PlatoAI in action:
+
+[![PlatoAI Demo](https://img.youtube.com/vi/LE6Z26gxAxw/maxresdefault.jpg)](https://youtu.be/LE6Z26gxAxw)
+
+Or view directly: https://youtu.be/LE6Z26gxAxw
+
 PlatoAI turns the Vancouver AI Hackathon survey into a living Socratic dialogue, letting anyone explore how people across Canada feel about music, technology, and creativity without touching a spreadsheet.
 
 ## How to View PlatoAI
