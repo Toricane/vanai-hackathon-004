@@ -75,3 +75,4 @@ The first launch checks for `data/processed/music_survey_data_with_embeddings.cs
 -   `templates/index.html` — Chat interface with citation-aware modal.
 -   `static/` — Styling and client-side interaction logic.
 -   `data/raw/` — Original survey responses and question descriptions.
+-   `data/processed/` — Embedding-augmented survey data for fast loading.
