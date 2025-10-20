@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>PlatoAI | Socratic Dialogues on Music & Culture</title>
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='style.css') }}"
+        />
+    </head>
+    <body>
+        <main class="page">
+            <section class="intro">
+                <h1>PlatoAI</h1>
+                <p>
+                    Ask a question about music and culture. Socrates and Glaucon
+                    will reflect on voices from the Canadian music survey.
+                </p>
+            </section>
+            <section class="interaction">
+                <form id="question-form" class="question-form">
+                    <label for="question-input">Your Question</label>
+                    <textarea
+                        id="question-input"
+                        name="question"
+                        rows="4"
+                        placeholder="How are listeners feeling about AI-generated music?"
+                        required
+                    ></textarea>
+                    <button type="submit">Generate Dialogue</button>
+                </form>
+                <div
+                    id="status-message"
+                    class="status"
+                    role="status"
+                    aria-live="polite"
+                ></div>
+            </section>
+            <section class="dialogue" aria-live="polite">
+                <h2>Dialogue</h2>
+                <div id="dialogue-container" class="dialogue-container"></div>
+            </section>
+        </main>
+
+        <div
+            id="modal"
+            class="modal modal-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-title"
+        >
+            <div id="modal-content" class="modal-content">
+                <button
+                    id="close-modal"
+                    class="modal-close"
+                    aria-label="Close source details"
+                >
+                    &times;
+                </button>
+                <h3 id="modal-title">Source Details</h3>
+                <p>
+                    <strong>Persona:</strong> <span id="source-persona"></span>
+                </p>
+                <p>
+                    <strong>Question:</strong>
+                    <span id="source-question"></span>
+                </p>
+                <p>
+                    <strong>Response:</strong>
+                    <span id="source-verbatim"></span>
+                </p>
+            </div>
+        </div>
+
+        <script
+            src="{{ url_for('static', filename='script.js') }}"
+            defer
+        ></script>
+    </body>
+</html>
