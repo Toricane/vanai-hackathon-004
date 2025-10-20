@@ -2,6 +2,20 @@
 
 PlatoAI turns the Vancouver AI Hackathon survey into a living Socratic dialogue, letting anyone explore how people across Canada feel about music, technology, and creativity without touching a spreadsheet.
 
+## How to View PlatoAI
+
+### Option 1: Run Locally
+
+Follow the instructions in the "Local Setup" section below to run PlatoAI on your own machine.
+
+### Option 2: View the HTML files in `examples/`
+
+You can also explore PlatoAI by opening the HTML files in the `examples/` directory. These files showcase different aspects of the application and provide a user-friendly way to interact with the survey data.
+
+They are essentially saved static snapshots of the chat interface. Simply open any of the HTML files in your web browser to see how PlatoAI presents the survey data through conversational AI.
+
+The citation modals will not function in these static examples, but you can still read through the dialogues to get a sense of how PlatoAI transforms raw survey data into philosophical conversations.
+
 ## Project Concept
 
 Exploring raw data is hard. It is overwhelming, and it is tough to know what questions to even ask. PlatoAI solves this by transforming the hackathon's survey data into an interactive, philosophical conversation.
@@ -14,7 +28,7 @@ Here is how it works:
 2. **Socrates finds the story in the data.** In response, the AI Socrates dives into the survey's 1,000+ responses. He does not give you charts; he finds the human stories, the surprising contradictions, and the nuanced opinions. He presents these real perspectives as evidence in a thoughtful debate, revealing the "why" behind the data.
 3. **You explore through a philosophical lens.** The result is a dynamic conversation that turns data exploration into a search for understanding. You are not just getting facts; you are uncovering the tensions and harmonies within our shared experience of music. Interactive citations let you click on Socrates' points to see the original anonymous responses, grounding the entire philosophical journey in real, human truth.
 
-## How PlatoAI Is Built (300 words)
+## How PlatoAI Is Built
 
 PlatoAI is engineered as a layered Python application that translates the Vancouver AI Hackathon survey into an interactive dialogue. The foundation begins with pandas loading the thousand response CSV, normalizing demographic fields, and marshalling the free form answers that anchor the dialogue. A preprocessing script hydrates each open ended column with OpenAI text-embedding-3-large vectors, producing a processed CSV inside data/processed that the runtime can read instantly. During server start Flask pulls that processed file, reconstructs the embedding matrices with NumPy, and caches both the row masks and metadata for fast retrieval. Each record becomes a Source dataclass capturing the verbatim quotation, the full survey prompt, a persona summary assembled from age, gender, and region, plus a reversible identifier so citations can point back to real testimony.
 
