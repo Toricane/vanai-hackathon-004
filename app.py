@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -337,9 +339,29 @@ def handle_generate_dialogue():
     return jsonify({"dialogue": dialogue_text, "sources": sources_payload})
 
 
+def _generate_processed_data() -> None:
+    script_path = os.path.join(
+        os.path.dirname(__file__), "scripts", "embeddings_of_data.py"
+    )
+    if not os.path.exists(script_path):
+        raise FileNotFoundError(
+            "Unable to generate processed data because embeddings_of_data.py was not found."
+        )
+    try:
+        subprocess.run([sys.executable, script_path], check=True)
+    except subprocess.CalledProcessError as exc:  # noqa: BLE001 - propagate context
+        raise RuntimeError(
+            "Failed to generate processed survey embeddings. Check the script output for details."
+        ) from exc
+
+
 def _load_data() -> pd.DataFrame:
     if not os.path.exists(DATA_PATH):
-        raise FileNotFoundError(f"Processed data not found at {DATA_PATH}")
+        _generate_processed_data()
+        if not os.path.exists(DATA_PATH):
+            raise FileNotFoundError(
+                f"Processed data not found at {DATA_PATH} even after generation attempt"
+            )
     return pd.read_csv(DATA_PATH)
 
 
@@ -348,4 +370,4 @@ EMBEDDING_VECTORS = _prepare_embeddings(DATAFRAME)
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
