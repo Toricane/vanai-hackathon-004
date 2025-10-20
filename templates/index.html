@@ -10,65 +10,128 @@
         />
     </head>
     <body>
-        <main class="page">
-            <section class="intro">
+        <div class="container">
+            <header class="header">
                 <h1>PlatoAI</h1>
                 <p>
-                    Ask a question about music and culture. Socrates and Glaucon
-                    will reflect on voices from the Canadian music survey.
+                    Explore insights from the Canadian music survey through
+                    Socratic dialogue
                 </p>
-            </section>
-            <section class="interaction">
-                <form id="question-form" class="question-form">
-                    <label for="question-input">Your Question</label>
-                    <textarea
-                        id="question-input"
-                        name="question"
-                        rows="4"
-                        placeholder="How are listeners feeling about AI-generated music?"
-                        required
-                    ></textarea>
-                    <button type="submit">Generate Dialogue</button>
-                </form>
-                <div
-                    id="status-message"
-                    class="status"
-                    role="status"
-                    aria-live="polite"
-                ></div>
-            </section>
-            <section class="dialogue" aria-live="polite">
-                <h2>Dialogue</h2>
-                <div id="dialogue-container" class="dialogue-container"></div>
-            </section>
-        </main>
+            </header>
+
+            <div class="chat-area" id="chat-area">
+                <div class="welcome-state" id="welcome-state">
+                    <h2>Ask a Question</h2>
+                    <p>
+                        Select a suggested question below or ask your own to
+                        begin a Socratic dialogue
+                    </p>
+
+                    <div class="suggested-questions">
+                        <div
+                            class="suggestion-card"
+                            data-question="What was the first song or artist that really pulled you in?"
+                        >
+                            <h3>First Musical Connection</h3>
+                            <p>
+                                What was the first song or artist that really
+                                pulled you in?
+                            </p>
+                        </div>
+                        <div
+                            class="suggestion-card"
+                            data-question="What do you remember about the shift from your earlier music format to the new one — or how it changed the way you listened?"
+                        >
+                            <h3>Format Shifts</h3>
+                            <p>
+                                What do you remember about the shift from your
+                                earlier music format to the new one — or how it
+                                changed the way you listened?
+                            </p>
+                        </div>
+                        <div
+                            class="suggestion-card"
+                            data-question="What’s your music guilty pleasure? Spill it 👀"
+                        >
+                            <h3>Guilty Pleasures</h3>
+                            <p>
+                                What’s your music guilty pleasure? Spill it 👀
+                            </p>
+                        </div>
+                        <div
+                            class="suggestion-card"
+                            data-question="If your life had a theme song right now, what would it be — and why?"
+                        >
+                            <h3>Life Theme Song</h3>
+                            <p>
+                                If your life had a theme song right now, what
+                                would it be — and why?
+                            </p>
+                        </div>
+                        <div
+                            class="suggestion-card"
+                            data-question="What’s one song lyric that stuck with you or changed the way you see the world? Share it and who wrote it!"
+                        >
+                            <h3>Lyrics With Impact</h3>
+                            <p>
+                                What’s one song lyric that stuck with you or
+                                changed the way you see the world? Share it and
+                                who wrote it!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-container">
+                    <button class="new-chat-button" id="new-chat-btn">
+                        + New Chat
+                    </button>
+                    <div class="input-wrapper">
+                        <textarea
+                            id="message-input"
+                            placeholder="Ask a question about music and culture..."
+                            rows="1"
+                        ></textarea>
+                        <button class="send-button" id="send-btn" disabled>
+                            &rarr;
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div
             id="modal"
             class="modal modal-hidden"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="modal-title"
         >
-            <div id="modal-content" class="modal-content">
+            <div class="modal-content">
                 <button
-                    id="close-modal"
                     class="modal-close"
+                    id="close-modal"
                     aria-label="Close source details"
                 >
                     &times;
                 </button>
-                <h3 id="modal-title">Source Details</h3>
+                <h3>Source Details</h3>
                 <p>
-                    <strong>Persona:</strong> <span id="source-persona"></span>
+                    <strong>Name:</strong>
+                    <span id="source-name">Loading...</span>
+                </p>
+                <p>
+                    <strong>Persona:</strong>
+                    <span id="source-persona">Loading...</span>
                 </p>
                 <p>
                     <strong>Question:</strong>
-                    <span id="source-question"></span>
+                    <span id="source-question">Loading...</span>
                 </p>
                 <p>
                     <strong>Response:</strong>
-                    <span id="source-verbatim"></span>
+                    <span id="source-verbatim">Loading...</span>
                 </p>
             </div>
         </div>

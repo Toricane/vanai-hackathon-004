@@ -21,15 +21,31 @@ DATA_PATH = os.environ.get(
 DEFAULT_EMBEDDING_MODEL = os.environ.get(
     "PLATOAI_EMBED_MODEL", "text-embedding-3-large"
 )
-DEFAULT_DIALOGUE_MODEL = os.environ.get("PLATOAI_DIALOGUE_MODEL", "gpt-5-mini")
-TOP_N_RESULTS = int(os.environ.get("PLATOAI_TOP_N", "5"))
+DEFAULT_DIALOGUE_MODEL = os.environ.get("PLATOAI_DIALOGUE_MODEL", "gpt-5")
+TOP_N_RESULTS = int(os.environ.get("PLATOAI_TOP_N", "50"))
+HISTORY_MESSAGE_LIMIT = int(os.environ.get("PLATOAI_HISTORY_LIMIT", "60"))
 
-EMBEDDABLE_COLUMNS: Dict[str, str] = {
-    "Q3_artist_that_pulled_you_in": "When asked about the first artist that captured their imagination...",
-    "Q5_Music_formal_change_impact": "When reflecting on how a change in music formats impacted them...",
-    "Q16_Music_guilty_pleasure_text_OE": "When revealing a musical guilty pleasure...",
-    "Q18_Life_theme_song": "When sharing the theme song of their life right now...",
-    "Q19_Lyric_that_stuck_with_you": "When discussing a lyric that stayed with them...",
+EMBEDDABLE_COLUMNS: Dict[str, Dict[str, str]] = {
+    "Q3_artist_that_pulled_you_in": {
+        "summary": "What was the first song or artist that really pulled you in?",
+        "question": "What was the first song or artist that really pulled you in?",
+    },
+    "Q5_Music_formal_change_impact": {
+        "summary": "What do you remember about the shift from your earlier music format to the new one — or how it changed the way you listened?",
+        "question": "What do you remember about the shift from your earlier music format to the new one — or how it changed the way you listened?",
+    },
+    "Q16_Music_guilty_pleasure_text_OE": {
+        "summary": "What’s your music guilty pleasure? Spill it 👀",
+        "question": "What’s your music guilty pleasure? Spill it 👀",
+    },
+    "Q18_Life_theme_song": {
+        "summary": "If your life had a theme song right now, what would it be — and why?",
+        "question": "If your life had a theme song right now, what would it be — and why?",
+    },
+    "Q19_Lyric_that_stuck_with_you": {
+        "summary": "What’s one song lyric that stuck with you or changed the way you see the world? Share it and who wrote it!",
+        "question": "What’s one song lyric that stuck with you or changed the way you see the world? Share it and who wrote it!",
+    },
 }
 
 
@@ -37,8 +53,10 @@ EMBEDDABLE_COLUMNS: Dict[str, str] = {
 class Source:
     id: int
     question_text: str
+    full_question: str
     verbatim_text: str
     persona: str
+    respondent_name: str
 
     def to_prompt_line(self) -> str:
         return (
@@ -97,6 +115,16 @@ def _format_persona(row: pd.Series) -> str:
     return " ".join(parts)
 
 
+def _format_name(row: pd.Series) -> str:
+    name_value = str(row.get("distribution_name", "")).strip()
+    if name_value and not (name_value.isupper() and len(name_value) <= 4):
+        return name_value
+    participant_id = str(row.get("participant_id", "")).strip()
+    if participant_id:
+        return f"Respondent {participant_id[:8]}"
+    return "Anonymous respondent"
+
+
 def _prepare_embeddings(df: pd.DataFrame) -> Dict[str, Dict[str, np.ndarray]]:
     prepared: Dict[str, Dict[str, np.ndarray]] = {}
     for column in EMBEDDABLE_COLUMNS:
@@ -126,12 +154,17 @@ def _build_source(row: pd.Series, column: str, source_id: int) -> Source:
     raw_text = str(row.get(column, ""))
     verbatim = " ".join(raw_text.split())
     persona = _format_persona(row)
-    question_text = EMBEDDABLE_COLUMNS[column]
+    question_meta = EMBEDDABLE_COLUMNS[column]
+    question_text = question_meta["summary"]
+    full_question = question_meta["question"]
+    respondent_name = _format_name(row)
     return Source(
         id=source_id,
         question_text=question_text,
+        full_question=full_question,
         verbatim_text=verbatim,
         persona=persona,
+        respondent_name=respondent_name,
     )
 
 
@@ -182,29 +215,73 @@ def find_most_relevant_responses(
     return selected
 
 
-def _build_prompt(sources: List[Source], user_question: str) -> Dict[str, str]:
+def _sanitize_history(raw_history: object) -> List[Dict[str, str]]:
+    if not isinstance(raw_history, list):
+        return []
+    clean: List[Dict[str, str]] = []
+    for item in raw_history:
+        if not isinstance(item, dict):
+            continue
+        role = str(item.get("role", "")).strip().lower()
+        content = str(item.get("content", "")).strip()
+        if role not in {"user", "assistant"}:
+            continue
+        if not content:
+            continue
+        clean.append({"role": role, "content": content})
+    if HISTORY_MESSAGE_LIMIT and len(clean) > HISTORY_MESSAGE_LIMIT:
+        clean = clean[-HISTORY_MESSAGE_LIMIT:]
+    return clean
+
+
+def _history_to_context(history: List[Dict[str, str]]) -> str:
+    if not history:
+        return ""
+    lines: List[str] = []
+    for message in history:
+        role = "User" if message["role"] == "user" else "Assistant"
+        lines.append(f"{role}: {message['content']}")
+    return "\n".join(lines)
+
+
+def _build_prompt(
+    sources: List[Source], user_question: str, conversation_context: str
+) -> Dict[str, str]:
     if not sources:
         raise ValueError("No sources available to build the prompt.")
     context_lines = [source.to_prompt_line() for source in sources]
     context_for_prompt = "\n".join(context_lines)
+    history_block = conversation_context.strip() or "None."
     system_prompt = """
-You are a master of Socratic dialogue. You will generate a conversation between two characters: Socrates and Glaucon.
+You are channeling Plato's distinctive voice to craft a living dialogue between Socrates and Glaucon.
 
 **Character Roles:**
-- **Socrates:** You are a data-driven philosopher. You do not have personal opinions. Your role is to present evidence and insights found exclusively in the provided 'Survey Data Context'. You must guide the conversation by paraphrasing or quoting from the context.
-- **Glaucon:** You are Socrates' curious student. You ask questions, express common assumptions, and react to the data Socrates presents.
+- **Socrates:** A data-grounded philosopher who probes toward the Form of truth. You wield the evidence provided in the 'Survey Data Context' as if it were testimony in the agora, paraphrasing or quoting it carefully. Invite Glaucon to examine assumptions, employ analogies, define terms, and trace causes. Never inject knowledge beyond the supplied sources.
+- **Glaucon:** A spirited interlocutor whose curiosity mirrors the reader’s doubts. You raise common intuitions, press for clarification, and allow Socrates to expose contradictions or unveil deeper harmonies.
+
+**Dialectical Tone Guidance:**
+- Keep the exchange contemplative, lucid, and purposeful—as in Plato's dialogues.
+- Let Socrates guide with gentle irony, measured patience, and stepwise reasoning.
+- Let Glaucon respond with wonder, occasional skepticism, and willingness to be led toward insight.
 
 **CRITICAL RULE FOR CITATIONS:**
-When you, as Socrates, use information from a specific source in the 'Survey Data Context', you MUST end that sentence with a citation marker in the exact format `[cite:ID]`, where `ID` is the number of the source you are referencing. For example, if you are using information from 'Source 1', you must end your sentence with `[cite:1]`. Use multiple citations if a sentence draws from multiple sources, like `[cite:1]`. Glaucon NEVER uses citations.
+When Socrates references information from a specific source in the 'Survey Data Context', conclude that sentence with a citation marker in the exact format `[cite:ID]`, where `ID` is the number of the source. If multiple sources inform the sentence, include each in the marker (e.g., `[cite:1][cite:3]`). Glaucon NEVER uses citations.
+
+**Output Formatting Requirements:**
+- Output must be plain text, not Markdown.
+- Each line must begin with either `Socrates:` or `Glaucon:` followed by a single space and their dialogue.
+- Do not include blank lines between turns or any commentary before or after the dialogue.
 
 **Other Rules:**
-1.  The dialogue must directly address the 'User's Question'.
-2.  Base the entire conversation on the 'Survey Data Context'. Do not invent facts.
-3.  The dialogue should be philosophical, insightful, and easy to read.
-4.  Alternate between Socrates and Glaucon. Start with Socrates.
-5.  Format the output clearly, with each character's name on a new line.
+1.  Address the 'User's Question' directly while weaving philosophical insight from the provided evidence.
+2.  Base every claim on the 'Survey Data Context'. Do not invent facts or speculate beyond the supplied material.
+3.  Alternate between Socrates and Glaucon, beginning with Socrates.
+4.  Keep every line on a new line with the required `Name: ` prefix.
 """.strip()
     user_prompt = f"""
+**Conversation History:**
+{history_block}
+
 **User's Question:** "{user_question}"
 
 **Survey Data Context:**
@@ -215,8 +292,10 @@ Begin the dialogue now.
     return {"system": system_prompt, "user": user_prompt}
 
 
-def generate_dialogue(user_question: str, sources: List[Source]) -> str:
-    prompts = _build_prompt(sources, user_question)
+def generate_dialogue(
+    user_question: str, sources: List[Source], conversation_context: str
+) -> str:
+    prompts = _build_prompt(sources, user_question, conversation_context)
     response = client.chat.completions.create(
         model=DEFAULT_DIALOGUE_MODEL,
         messages=[
@@ -224,7 +303,6 @@ def generate_dialogue(user_question: str, sources: List[Source]) -> str:
             {"role": "user", "content": prompts["user"]},
         ],
         # temperature=0.7,
-        # temperature not supported for this model
     )
     return response.choices[0].message.content.strip()
 
@@ -238,14 +316,21 @@ def index() -> str:
 def handle_generate_dialogue():
     payload = request.get_json(force=True, silent=True) or {}
     user_question = str(payload.get("question", "")).strip()
+    raw_history = payload.get("conversation_history", [])
+    history = _sanitize_history(raw_history)
+    conversation_context = _history_to_context(history)
     if not user_question:
         return jsonify({"error": "Please provide a question."}), 400
     try:
-        query_embedding = get_embedding(user_question)
+        query_text = user_question
+        if conversation_context:
+            combined = f"{conversation_context}\n{user_question}"
+            query_text = combined[-8000:]
+        query_embedding = get_embedding(query_text)
         sources = find_most_relevant_responses(query_embedding)
         if not sources:
             return jsonify({"error": "No relevant survey responses found."}), 404
-        dialogue_text = generate_dialogue(user_question, sources)
+        dialogue_text = generate_dialogue(user_question, sources, conversation_context)
     except Exception as exc:  # noqa: BLE001 - surface full exception
         return jsonify({"error": str(exc)}), 500
     sources_payload = {str(source.id): source.__dict__ for source in sources}
